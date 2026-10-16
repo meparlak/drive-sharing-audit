@@ -45,10 +45,9 @@ Rapor sayfasındaki sütunlar:
 
 ## Bilmen gerekenler
 
-- Yalnızca **sahibi olduğun** öğeler taranır. Başkalarının seninle paylaştıkları listeye girmez.
 - Paylaşımı kaldırmak otomatik olarak geri alınamaz. Yanlış kaldırırsan o kişiyle dosyayı yeniden paylaşman gerekir. Kişiye bildirim gitmez, yalnızca erişimi kalkar.
 - Bir klasörün paylaşımını kaldırdığında, içindeki dosyaların o klasörden gelen erişimi de kalkar. Bu yüzden betik önce klasörleri işler.
-- Sahiplik değişmez; dosyalar silinmez ya da taşınmaz.
+- Sahiplik değişmez; dosyalar silinmez veya taşınmaz.
 - Rapor bir anlık görüntüdür. Sonradan yeni paylaşımlar yaparsan raporu yeniden çıkarman gerekir.
 - Kök klasörün adı rapordaki yollarda "Drive'ım" olarak görünür. İngilizce arayüz kullanıyorsan betiğin başındaki `KOK_ADI` değerini "My Drive" yapabilirsin.
 
