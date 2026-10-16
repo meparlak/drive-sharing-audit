@@ -1,68 +1,66 @@
-# Drive Paylaşım Denetimi
+# Drive Sharing Audit
 
-Google Drive'da yıllar içinde kimlerle neyi paylaştığımı bir türlü göremiyordum. Drive'ın arayüzünde "benim paylaştıklarım" diye bir liste yok; bir dosyanın kimlerle paylaşıldığını görmek için tek tek açmak gerekiyor. Bu küçük Google Apps Script bunu iki adımda çözüyor:
+[Türkçe](README.tr.md) | English
 
-1. **Rapor:** Sahibi olduğun bütün dosya ve klasörleri tarar. Bağlantıyla açık olanları ve belirli kişilerle paylaşılanları kimlerle, hangi yetkiyle paylaşıldıklarıyla birlikte bir Google E-Tablosuna yazar. Hiçbir şeyi değiştirmez.
-2. **Kaldırma:** Raporda işaretlediğin satırların paylaşımını kaldırır ve o dosyaları "yalnızca ben" durumuna getirir.
+Over the years I shared a lot of files and folders from my Google Drive, and at some point I realized I had no idea who could still open what. Drive has no "shared by me" list; to see who has access to a file you have to open its sharing dialog one by one. This small Google Apps Script solves that in two steps:
 
-Betik tamamen kendi Google hesabının içinde çalışır. Hiçbir veri başka bir sunucuya gönderilmez ve dışarıdan bir kütüphane kullanılmaz.
+1. **Report:** It scans every file and folder you own and writes the ones that are shared by link or with specific people to a Google Sheet, together with who has access and at what level. It does not change anything.
+2. **Remove:** It removes sharing from the rows you tick in that sheet, so those files become "only me" again.
 
-## Rapor neleri gösteriyor
+The script runs entirely inside your own Google account. No data is sent to any other server and no external libraries are used.
 
-Rapor sayfasındaki sütunlar:
+## What the report shows
 
-- **KALDIR:** Paylaşımını kaldırmak istediğin satırlar için işaret kutusu.
-- **Tür, Ad, Klasör yolu:** Öğenin ne olduğu ve Drive'da nerede durduğu.
-- **Bağlantı erişimi:** "Bağlantıya sahip herkes", "Herkese açık (aranabilir)", "Kuruluş: alan-adı" ya da "—".
-- **Bağlantı yetkisi:** Görüntüleyen, Yorumcu ya da Düzenleyen.
-- **Paylaşılan kişiler:** E-posta adresleri ve her birinin yetkisi.
-- **Aç:** Öğenin Drive bağlantısı.
-- **Sonuç:** Kaldırma işleminden sonra "Kaldırıldı" ya da hata yazar.
+Columns on the "Rapor" (report) sheet:
 
-Özet sayfasında toplam sayılar ve hangi kişinin kaç öğeye erişebildiği yer alıyor. Klasörler en üstte, ardından bağlantıyla açık olanlar listelenir.
+- **KALDIR** (remove): a checkbox for the rows whose sharing you want to remove.
+- **Tür, Ad, Klasör yolu** (type, name, folder path): what the item is and where it sits in your Drive.
+- **Bağlantı erişimi** (link access): "Bağlantıya sahip herkes" (anyone with the link), "Herkese açık (aranabilir)" (public on the web), "Kuruluş: domain" (your organization) or "—" (no link sharing).
+- **Bağlantı yetkisi** (link role): Görüntüleyen (viewer), Yorumcu (commenter) or Düzenleyen (editor).
+- **Paylaşılan kişiler** (shared with): email addresses and the role of each person.
+- **Aç** (open): the Drive link of the item.
+- **Sonuç** (result): after removal, "Kaldırıldı" (removed) or the error message.
 
-## Kurulum (bir kez, yaklaşık 3 dakika)
+The "Özet" (summary) sheet shows the totals and how many items each person can access. Folders are listed first, then items shared by link.
 
-1. [script.google.com](https://script.google.com) adresine git ve **Yeni proje** oluştur.
-2. Editördeki örnek kodu sil, [`PaylasimDenetimi.gs`](PaylasimDenetimi.gs) dosyasının içeriğini yapıştır ve kaydet.
-3. Sol menüde **Hizmetler** yanındaki **+** işaretine tıkla, **Drive API**'yi seç, sürümü **v3** bırak ve **Ekle** de.
+The sheet labels are in Turkish because I built it for myself first. The column meanings above are all you need to read it.
 
-İstersen 3. adım yerine **Proje Ayarları → "appsscript.json" dosyasını göster** seçeneğini açıp [`appsscript.json`](appsscript.json) içeriğini oradaki dosyanın yerine yapıştırabilirsin. Drive API bu yolla da etkinleşir.
+## Setup (once, about 3 minutes)
 
-## Kullanım
+1. Go to [script.google.com](https://script.google.com) and create a **New project**.
+2. Delete the sample code in the editor, paste the contents of [`DriveSharingAudit.gs`](DriveSharingAudit.gs) and save.
+3. In the left menu, click **+** next to **Services**, pick **Drive API**, keep version **v3** and click **Add**.
 
-### 1. Raporu çıkar
+Instead of step 3 you can open **Project Settings → Show "appsscript.json" manifest file in editor** and replace that file with the contents of [`appsscript.json`](appsscript.json). This enables the Drive API as well.
 
-1. Üstteki işlev listesinden `paylasimRaporu` seç ve **Çalıştır**'a bas.
-2. İlk çalıştırmada Google izin ister: **İzinleri incele** → hesabını seç. "Google bu uygulamayı doğrulamadı" uyarısı çıkarsa **Gelişmiş** → **(güvenli değil) projesine git** → **İzin ver**. Bu uyarı, betiği kendin oluşturduğun için çıkıyor.
-3. Bitince alttaki yürütme günlüğünde raporun linki görünür. Rapor Drive'ında "Paylaşım Raporu YYYY-AA-GG SS:DD" adıyla oluşur.
+## Usage
 
-### 2. Paylaşımları kaldır
+### 1. Create the report
 
-1. Raporda kaldırmak istediğin satırların **KALDIR** kutusunu işaretle. Hepsini kaldırmak istersen sütunu seçip boşluk tuşuna basman yeterli.
-2. Editöre dön, `secilenleriKaldir` seç ve **Çalıştır**'a bas.
-3. Her satırın **Sonuç** sütununa ne olduğu yazılır. Çok sayıda satır varsa betik 5 dakikada bir durur; tekrar çalıştırdığında kaldığı yerden devam eder.
+1. Select `paylasimRaporu` (sharing report) in the function list at the top and click **Run**.
+2. On the first run Google asks for permission: **Review permissions** → choose your account. If you see "Google hasn't verified this app", click **Advanced** → **Go to (project name) (unsafe)** → **Allow**. The warning appears because you created the script yourself.
+3. When it finishes, the execution log shows the link to the report. The sheet is created in your Drive as "Paylaşım Raporu YYYY-MM-DD HH:MM".
 
-## Bilmen gerekenler
+### 2. Remove sharing
 
-- Paylaşımı kaldırmak otomatik olarak geri alınamaz. Yanlış kaldırırsan o kişiyle dosyayı yeniden paylaşman gerekir. Kişiye bildirim gitmez, yalnızca erişimi kalkar.
-- Bir klasörün paylaşımını kaldırdığında, içindeki dosyaların o klasörden gelen erişimi de kalkar. Bu yüzden betik önce klasörleri işler.
-- Sahiplik değişmez; dosyalar silinmez veya taşınmaz.
-- Rapor bir anlık görüntüdür. Sonradan yeni paylaşımlar yaparsan raporu yeniden çıkarman gerekir.
-- Kök klasörün adı rapordaki yollarda "Drive'ım" olarak görünür. İngilizce arayüz kullanıyorsan betiğin başındaki `KOK_ADI` değerini "My Drive" yapabilirsin.
+1. In the report, tick **KALDIR** for the rows you want to make private. To select all, select the column and press the space bar.
+2. Go back to the editor, select `secilenleriKaldir` (remove selected) and click **Run**.
+3. The **Sonuç** column of each row shows what happened. If there are many rows the script stops after 5 minutes; run it again and it continues where it left off.
 
-## Nasıl çalışıyor
+## Things to know
 
-`paylasimRaporu` Drive API v3'ün `files.list` çağrısıyla, sahibi olduğun ve çöpte olmayan öğeleri 1000'erli sayfalar hâlinde çeker. Her öğenin izinleri aynı çağrıda gelir, bu yüzden on binlerce dosyada bile tarama birkaç dakika sürer. Sahip dışındaki izinleri olan ya da `shared` işaretli öğeler rapora yazılır.
+- Removing sharing cannot be undone automatically. If you remove someone by mistake you have to share the file with them again. They are not notified; they simply lose access.
+- When you remove sharing from a folder, the access that its files inherited from that folder is removed too. This is why the script handles folders first.
+- Ownership does not change, and nothing is deleted or moved.
+- The report is a snapshot. If you share new files later, run the report again.
+- The root folder appears as "Drive'ım" in the paths. If your Drive is in English, change `KOK_ADI` at the top of the script to "My Drive".
 
-`secilenleriKaldir` işaretli satırların izin kimliklerini `permissions.delete` ile siler. Zaten kaldırılmış izinler (örneğin önce üst klasörden kalkmış olanlar) hata sayılmaz.
+## How it works
 
----
+`paylasimRaporu` calls `files.list` from the Drive API v3 to fetch everything you own that is not in the trash, 1000 items per page. The permissions of each item come back in the same call, so even tens of thousands of files are scanned in a few minutes. Items that are marked `shared` or have any permission other than the owner's are written to the report.
 
-## English summary
+`secilenleriKaldir` deletes the permission IDs of the ticked rows with `permissions.delete`. Permissions that are already gone (for example removed earlier through a parent folder) are not counted as errors.
 
-A small Google Apps Script that lists every file and folder you own in Google Drive that is shared via link or with specific people, writes them to a Google Sheet with who has access and at what level, and then removes sharing from the rows you tick. It runs entirely inside your own Google account and needs the Drive API v3 advanced service. The interface and sheet headers are in Turkish; run `paylasimRaporu` for the report and `secilenleriKaldir` to remove sharing from selected rows.
-
-## Lisans
+## License
 
 [MIT](LICENSE)

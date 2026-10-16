@@ -1,6 +1,6 @@
 /**
  * Drive Paylaşım Denetimi
- * https://github.com/meparlak/drive-paylasim-denetimi  (MIT Lisansı)
+ * https://github.com/meparlak/drive-sharing-audit  (MIT License)
  *
  * 1) paylasimRaporu()     → Sahibi olduğun ve başkasıyla paylaşılmış / bağlantıyla açık olan her dosya ve
  *                            klasörü "Paylaşım Raporu" adlı yeni bir Google E-Tablosuna yazar. Hiçbir şeyi değiştirmez.
