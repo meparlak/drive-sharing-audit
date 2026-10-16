@@ -11,19 +11,18 @@ The script runs entirely inside your own Google account. No data is sent to any 
 
 ## What the report shows
 
-Columns on the "Rapor" (report) sheet:
+Columns on the "Report" sheet:
 
-- **KALDIR** (remove): a checkbox for the rows whose sharing you want to remove.
-- **Tür, Ad, Klasör yolu** (type, name, folder path): what the item is and where it sits in your Drive.
-- **Bağlantı erişimi** (link access): "Bağlantıya sahip herkes" (anyone with the link), "Herkese açık (aranabilir)" (public on the web), "Kuruluş: domain" (your organization) or "—" (no link sharing).
-- **Bağlantı yetkisi** (link role): Görüntüleyen (viewer), Yorumcu (commenter) or Düzenleyen (editor).
-- **Paylaşılan kişiler** (shared with): email addresses and the role of each person.
-- **Aç** (open): the Drive link of the item.
-- **Sonuç** (result): after removal, "Kaldırıldı" (removed) or the error message.
+- **REMOVE:** a checkbox for the rows whose sharing you want to remove.
+- **Type, Name, Folder path:** what the item is and where it sits in your Drive.
+- **Link access:** "Anyone with the link", "Public on the web", "Organization: domain" or "—" (no link sharing).
+- **Link role:** Viewer, Commenter or Editor.
+- **Shared with:** email addresses and the role of each person.
+- **People:** how many people the item is shared with.
+- **Open:** the Drive link of the item.
+- **Result:** after removal, "Removed" or the error message.
 
-The "Özet" (summary) sheet shows the totals and how many items each person can access. Folders are listed first, then items shared by link.
-
-The sheet labels are in Turkish because I built it for myself first. The column meanings above are all you need to read it.
+The "Summary" sheet shows the totals and how many items each person can access. Folders are listed first, then items shared by link.
 
 ## Setup (once, about 3 minutes)
 
@@ -37,15 +36,15 @@ Instead of step 3 you can open **Project Settings → Show "appsscript.json" man
 
 ### 1. Create the report
 
-1. Select `paylasimRaporu` (sharing report) in the function list at the top and click **Run**.
+1. Select `sharingReport` in the function list at the top and click **Run**.
 2. On the first run Google asks for permission: **Review permissions** → choose your account. If you see "Google hasn't verified this app", click **Advanced** → **Go to (project name) (unsafe)** → **Allow**. The warning appears because you created the script yourself.
-3. When it finishes, the execution log shows the link to the report. The sheet is created in your Drive as "Paylaşım Raporu YYYY-MM-DD HH:MM".
+3. When it finishes, the execution log shows the link to the report. The sheet is created in your Drive as "Sharing Report YYYY-MM-DD HH:MM".
 
 ### 2. Remove sharing
 
-1. In the report, tick **KALDIR** for the rows you want to make private. To select all, select the column and press the space bar.
-2. Go back to the editor, select `secilenleriKaldir` (remove selected) and click **Run**.
-3. The **Sonuç** column of each row shows what happened. If there are many rows the script stops after 5 minutes; run it again and it continues where it left off.
+1. In the report, tick **REMOVE** for the rows you want to make private. To select all, select the column and press the space bar.
+2. Go back to the editor, select `removeSelected` and click **Run**.
+3. The **Result** column of each row shows what happened. If there are many rows the script stops after 5 minutes; run it again and it continues where it left off.
 
 ## Things to know
 
@@ -53,13 +52,14 @@ Instead of step 3 you can open **Project Settings → Show "appsscript.json" man
 - When you remove sharing from a folder, the access that its files inherited from that folder is removed too. This is why the script handles folders first.
 - Ownership does not change, and nothing is deleted or moved.
 - The report is a snapshot. If you share new files later, run the report again.
-- The root folder appears as "Drive'ım" in the paths. If your Drive is in English, change `KOK_ADI` at the top of the script to "My Drive".
+- The root folder appears as "My Drive" in the paths. You can change `ROOT_NAME` at the top of the script to match your Drive's language.
+- Dates in the report name use the script's time zone. The included `appsscript.json` sets it to Europe/Istanbul; change `timeZone` there or in Project Settings if you are elsewhere.
 
 ## How it works
 
-`paylasimRaporu` calls `files.list` from the Drive API v3 to fetch everything you own that is not in the trash, 1000 items per page. The permissions of each item come back in the same call, so even tens of thousands of files are scanned in a few minutes. Items that are marked `shared` or have any permission other than the owner's are written to the report.
+`sharingReport` calls `files.list` from the Drive API v3 to fetch everything you own that is not in the trash, 1000 items per page. The permissions of each item come back in the same call, so even tens of thousands of files are scanned in a few minutes. Items that are marked `shared` or have any permission other than the owner's are written to the report.
 
-`secilenleriKaldir` deletes the permission IDs of the ticked rows with `permissions.delete`. Permissions that are already gone (for example removed earlier through a parent folder) are not counted as errors.
+`removeSelected` deletes the permission IDs of the ticked rows with `permissions.delete`. Permissions that are already gone (for example removed earlier through a parent folder) are not counted as errors.
 
 ## License
 

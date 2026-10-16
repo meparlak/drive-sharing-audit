@@ -11,17 +11,18 @@ Betik tamamen kendi Google hesabının içinde çalışır. Hiçbir veri başka 
 
 ## Rapor neleri gösteriyor
 
-Rapor sayfasındaki sütunlar:
+Betiğin arayüzü İngilizce. Report (Rapor) sayfasındaki sütunlar:
 
-- **KALDIR:** Paylaşımını kaldırmak istediğin satırlar için işaret kutusu.
-- **Tür, Ad, Klasör yolu:** Öğenin ne olduğu ve Drive'da nerede durduğu.
-- **Bağlantı erişimi:** "Bağlantıya sahip herkes", "Herkese açık (aranabilir)", "Kuruluş: alan-adı" ya da "—".
-- **Bağlantı yetkisi:** Görüntüleyen, Yorumcu ya da Düzenleyen.
-- **Paylaşılan kişiler:** E-posta adresleri ve her birinin yetkisi.
-- **Aç:** Öğenin Drive bağlantısı.
-- **Sonuç:** Kaldırma işleminden sonra "Kaldırıldı" ya da hata yazar.
+- **REMOVE (Kaldır):** Paylaşımını kaldırmak istediğin satırlar için işaret kutusu.
+- **Type, Name, Folder path (Tür, Ad, Klasör yolu):** Öğenin ne olduğu ve Drive'da nerede durduğu.
+- **Link access (Bağlantı erişimi):** "Anyone with the link" (bağlantıya sahip herkes), "Public on the web" (herkese açık, aranabilir), "Organization: alan-adı" (kuruluş) ya da "—".
+- **Link role (Bağlantı yetkisi):** Viewer (görüntüleyen), Commenter (yorumcu) ya da Editor (düzenleyen).
+- **Shared with (Paylaşılan kişiler):** E-posta adresleri ve her birinin yetkisi.
+- **People (Kişi sayısı):** Öğenin kaç kişiyle paylaşıldığı.
+- **Open (Aç):** Öğenin Drive bağlantısı.
+- **Result (Sonuç):** Kaldırma işleminden sonra "Removed" ya da hata yazar.
 
-Özet sayfasında toplam sayılar ve hangi kişinin kaç öğeye erişebildiği yer alıyor. Klasörler en üstte, ardından bağlantıyla açık olanlar listelenir.
+Summary (Özet) sayfasında toplam sayılar ve hangi kişinin kaç öğeye erişebildiği yer alıyor. Klasörler en üstte, ardından bağlantıyla açık olanlar listelenir.
 
 ## Kurulum (bir kez, yaklaşık 3 dakika)
 
@@ -35,15 +36,15 @@ Rapor sayfasındaki sütunlar:
 
 ### 1. Raporu çıkar
 
-1. Üstteki işlev listesinden `paylasimRaporu` seç ve **Çalıştır**'a bas.
+1. Üstteki işlev listesinden `sharingReport` seç ve **Çalıştır**'a bas.
 2. İlk çalıştırmada Google izin ister: **İzinleri incele** → hesabını seç. "Google bu uygulamayı doğrulamadı" uyarısı çıkarsa **Gelişmiş** → **(güvenli değil) projesine git** → **İzin ver**. Bu uyarı, betiği kendin oluşturduğun için çıkıyor.
-3. Bitince alttaki yürütme günlüğünde raporun linki görünür. Rapor Drive'ında "Paylaşım Raporu YYYY-AA-GG SS:DD" adıyla oluşur.
+3. Bitince alttaki yürütme günlüğünde raporun linki görünür. Rapor Drive'ında "Sharing Report YYYY-AA-GG SS:DD" adıyla oluşur.
 
 ### 2. Paylaşımları kaldır
 
-1. Raporda kaldırmak istediğin satırların **KALDIR** kutusunu işaretle. Hepsini kaldırmak istersen sütunu seçip boşluk tuşuna basman yeterli.
-2. Editöre dön, `secilenleriKaldir` seç ve **Çalıştır**'a bas.
-3. Her satırın **Sonuç** sütununa ne olduğu yazılır. Çok sayıda satır varsa betik 5 dakikada bir durur; tekrar çalıştırdığında kaldığı yerden devam eder.
+1. Raporda kaldırmak istediğin satırların **REMOVE** kutusunu işaretle. Hepsini kaldırmak istersen sütunu seçip boşluk tuşuna basman yeterli.
+2. Editöre dön, `removeSelected` seç ve **Çalıştır**'a bas.
+3. Her satırın **Result** sütununa ne olduğu yazılır. Çok sayıda satır varsa betik 5 dakikada bir durur; tekrar çalıştırdığında kaldığı yerden devam eder.
 
 ## Bilmen gerekenler
 
@@ -51,13 +52,13 @@ Rapor sayfasındaki sütunlar:
 - Bir klasörün paylaşımını kaldırdığında, içindeki dosyaların o klasörden gelen erişimi de kalkar. Bu yüzden betik önce klasörleri işler.
 - Sahiplik değişmez; dosyalar silinmez veya taşınmaz.
 - Rapor bir anlık görüntüdür. Sonradan yeni paylaşımlar yaparsan raporu yeniden çıkarman gerekir.
-- Kök klasörün adı rapordaki yollarda "Drive'ım" olarak görünür. İngilizce arayüz kullanıyorsan betiğin başındaki `KOK_ADI` değerini "My Drive" yapabilirsin.
+- Kök klasörün adı rapordaki yollarda "My Drive" olarak görünür. Betiğin başındaki `ROOT_NAME` değerini "Drive'ım" yapabilirsin.
 
 ## Nasıl çalışıyor
 
-`paylasimRaporu` Drive API v3'ün `files.list` çağrısıyla, sahibi olduğun ve çöpte olmayan öğeleri 1000'erli sayfalar hâlinde çeker. Her öğenin izinleri aynı çağrıda gelir, bu yüzden on binlerce dosyada bile tarama birkaç dakika sürer. Sahip dışındaki izinleri olan ya da `shared` işaretli öğeler rapora yazılır.
+`sharingReport` Drive API v3'ün `files.list` çağrısıyla, sahibi olduğun ve çöpte olmayan öğeleri 1000'erli sayfalar hâlinde çeker. Her öğenin izinleri aynı çağrıda gelir, bu yüzden on binlerce dosyada bile tarama birkaç dakika sürer. Sahip dışındaki izinleri olan ya da `shared` işaretli öğeler rapora yazılır.
 
-`secilenleriKaldir` işaretli satırların izin kimliklerini `permissions.delete` ile siler. Zaten kaldırılmış izinler (örneğin önce üst klasörden kalkmış olanlar) hata sayılmaz.
+`removeSelected` işaretli satırların izin kimliklerini `permissions.delete` ile siler. Zaten kaldırılmış izinler (örneğin önce üst klasörden kalkmış olanlar) hata sayılmaz.
 
 ## Lisans
 

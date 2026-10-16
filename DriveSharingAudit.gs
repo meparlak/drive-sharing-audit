@@ -1,148 +1,149 @@
 /**
- * Drive Paylaşım Denetimi
+ * Drive Sharing Audit
  * https://github.com/meparlak/drive-sharing-audit  (MIT License)
  *
- * 1) paylasimRaporu()     → Sahibi olduğun ve başkasıyla paylaşılmış / bağlantıyla açık olan her dosya ve
- *                            klasörü "Paylaşım Raporu" adlı yeni bir Google E-Tablosuna yazar. Hiçbir şeyi değiştirmez.
- * 2) secilenleriKaldir()  → Rapordaki "KALDIR" kutusu işaretli satırların paylaşımını kaldırır
- *                            (bağlantı erişimi ve kişiler silinir, dosya "yalnızca ben" olur). Sahiplik değişmez.
+ * 1) sharingReport()   → Writes every file and folder you own that is shared by link or with specific people
+ *                         to a new Google Sheet called "Sharing Report". Changes nothing.
+ * 2) removeSelected()  → Removes sharing from the rows ticked in the "REMOVE" column of that report
+ *                         (link access and people are removed, the item becomes "only me"). Ownership is unchanged.
  *
- * Gerekli: Sol menü "Hizmetler" (+) → "Drive API" → sürüm v3 → Ekle.
+ * Requires: left menu "Services" (+) → "Drive API" → version v3 → Add.
  */
 
-const RAPOR_ADI = 'Paylaşım Raporu';
-const KOK_ADI = "Drive'ım";   // Drive'ın kök klasörünün rapordaki adı (İngilizce arayüzde "My Drive")
-const BASLIK = ['KALDIR', 'Tür', 'Ad', 'Klasör yolu', 'Bağlantı erişimi', 'Bağlantı yetkisi',
-                'Paylaşılan kişiler', 'Kişi sayısı', 'Aç', 'Sonuç', 'id', 'izinler'];
+const REPORT_NAME = 'Sharing Report';
+const ROOT_NAME = 'My Drive';   // How the root folder is shown in folder paths
+const TIME_ZONE = Session.getScriptTimeZone();
+const HEADERS = ['REMOVE', 'Type', 'Name', 'Folder path', 'Link access', 'Link role',
+                 'Shared with', 'People', 'Open', 'Result', 'id', 'permissionIds'];
 
-function paylasimRaporu() {
-  const kokId = DriveApp.getRootFolder().getId();
-  const ogeler = {};          // id -> {ad, ebeveyn, klasorMu}
-  const paylasilan = [];
-  let sayfa = null;
+function sharingReport() {
+  const rootId = DriveApp.getRootFolder().getId();
+  const items = {};           // id -> {name, parent, isFolder}
+  const shared = [];
+  let pageToken = null;
 
   do {
-    const yanit = Drive.Files.list({
+    const response = Drive.Files.list({
       q: "'me' in owners and trashed = false",
       pageSize: 1000,
-      pageToken: sayfa,
+      pageToken: pageToken,
       fields: 'nextPageToken, files(id, name, mimeType, parents, shared, webViewLink, ' +
               'permissions(id, type, role, emailAddress, domain, displayName, allowFileDiscovery))'
     });
-    (yanit.files || []).forEach(f => {
-      ogeler[f.id] = {ad: f.name, ebeveyn: (f.parents || [])[0],
-                      klasorMu: f.mimeType === 'application/vnd.google-apps.folder'};
-      const izinler = (f.permissions || []).filter(p => p.role !== 'owner');
-      if (f.shared || izinler.length) paylasilan.push({f: f, izinler: izinler});
+    (response.files || []).forEach(f => {
+      items[f.id] = {name: f.name, parent: (f.parents || [])[0],
+                     isFolder: f.mimeType === 'application/vnd.google-apps.folder'};
+      const permissions = (f.permissions || []).filter(p => p.role !== 'owner');
+      if (f.shared || permissions.length) shared.push({f: f, permissions: permissions});
     });
-    sayfa = yanit.nextPageToken;
-  } while (sayfa);
+    pageToken = response.nextPageToken;
+  } while (pageToken);
 
-  const yol = id => {
-    const parcalar = [];
-    let e = ogeler[id] && ogeler[id].ebeveyn;
-    for (let i = 0; e && i < 20; i++) {
-      if (e === kokId) { parcalar.unshift(KOK_ADI); break; }
-      if (!ogeler[e]) { parcalar.unshift('(başkasının klasörü)'); break; }
-      parcalar.unshift(ogeler[e].ad);
-      e = ogeler[e].ebeveyn;
+  const pathOf = id => {
+    const parts = [];
+    let p = items[id] && items[id].parent;
+    for (let i = 0; p && i < 20; i++) {
+      if (p === rootId) { parts.unshift(ROOT_NAME); break; }
+      if (!items[p]) { parts.unshift("(someone else's folder)"); break; }
+      parts.unshift(items[p].name);
+      p = items[p].parent;
     }
-    return parcalar.join(' / ');
+    return parts.join(' / ');
   };
 
-  const ROL = {reader: 'Görüntüleyen', commenter: 'Yorumcu', writer: 'Düzenleyen', fileOrganizer: 'Düzenleyen'};
-  const satirlar = paylasilan.map(({f, izinler}) => {
-    const baglanti = izinler.find(p => p.type === 'anyone') || izinler.find(p => p.type === 'domain');
-    const kisiler = izinler.filter(p => p.type === 'user' || p.type === 'group');
+  const ROLE = {reader: 'Viewer', commenter: 'Commenter', writer: 'Editor', fileOrganizer: 'Editor'};
+  const rows = shared.map(({f, permissions}) => {
+    const link = permissions.find(p => p.type === 'anyone') || permissions.find(p => p.type === 'domain');
+    const people = permissions.filter(p => p.type === 'user' || p.type === 'group');
     return [
       false,
-      ogeler[f.id].klasorMu ? 'Klasör' : 'Dosya',
+      items[f.id].isFolder ? 'Folder' : 'File',
       f.name,
-      yol(f.id),
-      !baglanti ? '—' : baglanti.type === 'anyone'
-        ? (baglanti.allowFileDiscovery ? 'Herkese açık (aranabilir)' : 'Bağlantıya sahip herkes')
-        : 'Kuruluş: ' + baglanti.domain,
-      baglanti ? (ROL[baglanti.role] || baglanti.role) : '—',
-      kisiler.map(p => (p.emailAddress || p.displayName) + ' (' + (ROL[p.role] || p.role) + ')').join(', '),
-      kisiler.length,
+      pathOf(f.id),
+      !link ? '—' : link.type === 'anyone'
+        ? (link.allowFileDiscovery ? 'Public on the web' : 'Anyone with the link')
+        : 'Organization: ' + link.domain,
+      link ? (ROLE[link.role] || link.role) : '—',
+      people.map(p => (p.emailAddress || p.displayName) + ' (' + (ROLE[p.role] || p.role) + ')').join(', '),
+      people.length,
       f.webViewLink,
       '',
       f.id,
-      JSON.stringify(izinler.map(p => p.id))
+      JSON.stringify(permissions.map(p => p.id))
     ];
   });
 
-  // Klasörler üstte, sonra bağlantıyla açık olanlar, sonra yola göre
-  satirlar.sort((a, b) => (a[1] === b[1] ? 0 : a[1] === 'Klasör' ? -1 : 1) ||
-                          (a[4] === b[4] ? 0 : a[4] === '—' ? 1 : -1) ||
-                          (a[3] + a[2]).localeCompare(b[3] + b[2], 'tr'));
+  // Folders first, then items shared by link, then by path
+  rows.sort((a, b) => (a[1] === b[1] ? 0 : a[1] === 'Folder' ? -1 : 1) ||
+                      (a[4] === b[4] ? 0 : a[4] === '—' ? 1 : -1) ||
+                      (a[3] + a[2]).localeCompare(b[3] + b[2]));
 
-  const ss = SpreadsheetApp.create(RAPOR_ADI + ' ' + Utilities.formatDate(new Date(), 'Europe/Istanbul', 'yyyy-MM-dd HH:mm'));
+  const ss = SpreadsheetApp.create(REPORT_NAME + ' ' + Utilities.formatDate(new Date(), TIME_ZONE, 'yyyy-MM-dd HH:mm'));
   const sh = ss.getSheets()[0];
-  sh.setName('Rapor');
-  sh.getRange(1, 1, 1, BASLIK.length).setValues([BASLIK]).setFontWeight('bold').setBackground('#DDEBF7');
-  if (satirlar.length) {
-    sh.getRange(2, 1, satirlar.length, BASLIK.length).setValues(satirlar);
-    sh.getRange(2, 1, satirlar.length, 1).insertCheckboxes();
+  sh.setName('Report');
+  sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]).setFontWeight('bold').setBackground('#DDEBF7');
+  if (rows.length) {
+    sh.getRange(2, 1, rows.length, HEADERS.length).setValues(rows);
+    sh.getRange(2, 1, rows.length, 1).insertCheckboxes();
   }
   sh.setFrozenRows(1);
   sh.hideColumns(11, 2);
   sh.setColumnWidth(1, 70); sh.setColumnWidth(3, 260); sh.setColumnWidth(4, 380);
   sh.setColumnWidth(5, 190); sh.setColumnWidth(7, 360); sh.setColumnWidth(10, 220);
-  if (satirlar.length) sh.getRange(1, 1, satirlar.length + 1, BASLIK.length).createFilter();
+  if (rows.length) sh.getRange(1, 1, rows.length + 1, HEADERS.length).createFilter();
 
-  const ozet = ss.insertSheet('Özet');
-  const acik = satirlar.filter(r => r[4] !== '—').length;
-  const kisiyle = satirlar.filter(r => r[7] > 0).length;
-  const kisiSay = {};
-  satirlar.forEach(r => r[6] && r[6].split(', ').forEach(k => {
-    const e = k.replace(/ \(.*\)$/, ''); kisiSay[e] = (kisiSay[e] || 0) + 1;
+  const summary = ss.insertSheet('Summary');
+  const byLink = rows.filter(r => r[4] !== '—').length;
+  const withPeople = rows.filter(r => r[7] > 0).length;
+  const perPerson = {};
+  rows.forEach(r => r[6] && r[6].split(', ').forEach(entry => {
+    const who = entry.replace(/ \(.*\)$/, ''); perPerson[who] = (perPerson[who] || 0) + 1;
   }));
-  ozet.getRange(1, 1, 4, 2).setValues([
-    ['Paylaşılmış öğe', satirlar.length],
-    ['Bağlantıyla açık olan', acik],
-    ['Belirli kişilerle paylaşılan', kisiyle],
-    ['Taranan öğe (sahibi sensin)', Object.keys(ogeler).length]]);
-  ozet.getRange(6, 1, 1, 2).setValues([['Kişi / e-posta', 'Erişebildiği öğe sayısı']]).setFontWeight('bold');
-  const kl = Object.entries(kisiSay).sort((a, b) => b[1] - a[1]);
-  if (kl.length) ozet.getRange(7, 1, kl.length, 2).setValues(kl);
-  ozet.autoResizeColumns(1, 2);
+  summary.getRange(1, 1, 4, 2).setValues([
+    ['Shared items', rows.length],
+    ['Shared by link', byLink],
+    ['Shared with specific people', withPeople],
+    ['Items scanned (owned by you)', Object.keys(items).length]]);
+  summary.getRange(6, 1, 1, 2).setValues([['Person / email', 'Items they can access']]).setFontWeight('bold');
+  const list = Object.entries(perPerson).sort((a, b) => b[1] - a[1]);
+  if (list.length) summary.getRange(7, 1, list.length, 2).setValues(list);
+  summary.autoResizeColumns(1, 2);
 
-  PropertiesService.getUserProperties().setProperty('RAPOR_ID', ss.getId());
-  Logger.log('Rapor hazır: ' + ss.getUrl() + '  |  paylaşılmış öğe: ' + satirlar.length);
+  PropertiesService.getUserProperties().setProperty('SHARING_REPORT_ID', ss.getId());
+  Logger.log('Report ready: ' + ss.getUrl() + '  |  shared items: ' + rows.length);
 }
 
-function secilenleriKaldir() {
-  const id = PropertiesService.getUserProperties().getProperty('RAPOR_ID');
-  if (!id) throw new Error('Önce paylasimRaporu() çalıştırılmalı.');
-  const sh = SpreadsheetApp.openById(id).getSheetByName('Rapor');
+function removeSelected() {
+  const id = PropertiesService.getUserProperties().getProperty('SHARING_REPORT_ID');
+  if (!id) throw new Error('Run sharingReport() first.');
+  const sh = SpreadsheetApp.openById(id).getSheetByName('Report');
   const n = sh.getLastRow() - 1;
   if (n < 1) return;
-  const veri = sh.getRange(2, 1, n, BASLIK.length).getValues();
-  const basla = Date.now();
-  let kaldirilan = 0;
+  const data = sh.getRange(2, 1, n, HEADERS.length).getValues();
+  const started = Date.now();
+  let removed = 0;
 
-  // Önce klasörler: klasörden kaldırılan erişim içindekilerden de kalkar.
-  const sira = veri.map((r, i) => i).sort((a, b) => (veri[a][1] === 'Klasör' ? 0 : 1) - (veri[b][1] === 'Klasör' ? 0 : 1));
-  for (const i of sira) {
-    const r = veri[i];
-    if (r[0] !== true || String(r[9]).startsWith('Kaldırıldı')) continue;
-    if (Date.now() - basla > 5 * 60 * 1000) {
-      Logger.log('Süre doldu; kalanlar için secilenleriKaldir() tekrar çalıştırılmalı.');
+  // Folders first: removing access from a folder also removes the access its contents inherited.
+  const order = data.map((r, i) => i).sort((a, b) => (data[a][1] === 'Folder' ? 0 : 1) - (data[b][1] === 'Folder' ? 0 : 1));
+  for (const i of order) {
+    const r = data[i];
+    if (r[0] !== true || String(r[9]).startsWith('Removed')) continue;
+    if (Date.now() - started > 5 * 60 * 1000) {
+      Logger.log('Time limit reached; run removeSelected() again for the remaining rows.');
       break;
     }
-    const hatalar = [];
-    JSON.parse(r[11] || '[]').forEach(pid => {
+    const errors = [];
+    JSON.parse(r[11] || '[]').forEach(permissionId => {
       try {
-        Drive.Permissions.remove(r[10], pid);
+        Drive.Permissions.remove(r[10], permissionId);
       } catch (e) {
-        if (!/not ?found|404/i.test(String(e))) hatalar.push(String(e.message || e).slice(0, 120));
+        if (!/not ?found|404/i.test(String(e))) errors.push(String(e.message || e).slice(0, 120));
       }
     });
-    const sonuc = hatalar.length ? 'Hata: ' + hatalar.join(' | ')
-                                 : 'Kaldırıldı ' + Utilities.formatDate(new Date(), 'Europe/Istanbul', 'yyyy-MM-dd HH:mm');
-    sh.getRange(i + 2, 10).setValue(sonuc);
-    if (!hatalar.length) kaldirilan++;
+    const result = errors.length ? 'Error: ' + errors.join(' | ')
+                                 : 'Removed ' + Utilities.formatDate(new Date(), TIME_ZONE, 'yyyy-MM-dd HH:mm');
+    sh.getRange(i + 2, 10).setValue(result);
+    if (!errors.length) removed++;
   }
-  Logger.log('Paylaşımı kaldırılan öğe: ' + kaldirilan);
+  Logger.log('Items made private: ' + removed);
 }
